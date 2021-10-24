@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 
@@ -58,12 +59,53 @@ void quick_sort(int32_t arr[], uint32_t len){
     _quick_sort(arr, 0, len-1);
 }
 
+void _merge(int32_t arr[], int32_t tmp_arr[], int32_t lpos, int32_t rpos, int32_t rend){
+    uint32_t lend = rpos-1;
+    uint32_t tmp_pos = lpos;
+    uint32_t start = lpos;
+
+    while(lpos <= lend && rpos <= rend){
+        if(arr[lpos] <= arr[rpos]){
+            tmp_arr[tmp_pos++] = arr[lpos++];
+        }else{
+            tmp_arr[tmp_pos++] = arr[rpos++];
+        }
+    }
+
+    while(lpos <= lend){
+        tmp_arr[tmp_pos++] = arr[lpos++];
+    }
+    while(rpos <= rend){
+        tmp_arr[tmp_pos++] = arr[rpos++];
+    }
+
+    while(start <= rend){
+        arr[start] = tmp_arr[start];
+        start++;
+    }
+}
+void _merge_sort(int32_t arr[], int32_t tmp_arr[], int32_t left, int32_t right){
+    if(left < right){
+        int32_t center = (right+left)/2;
+        _merge_sort(arr, tmp_arr, left, center);
+        _merge_sort(arr, tmp_arr, center+1, right);
+        _merge(arr, tmp_arr, left, center+1, right);
+    }
+}
+
+void merge_sort(int32_t arr[], int32_t len){
+    int32_t *tmp_arr = malloc(sizeof(*tmp_arr) * len);
+    if(tmp_arr != NULL){
+        _merge_sort(arr, tmp_arr, 0, len-1);
+        free(tmp_arr);
+    }
+}
 
 int main(){
     int32_t arr[] = {7,8,9,1,2,3,0,6,5,4};
     int32_t len = sizeof(arr)/sizeof(*arr);
     
-    quick_sort(arr, len);
+    merge_sort(arr, len);
 
     for(int i=0; i<len; i++){
         printf("%d ", arr[i]);
