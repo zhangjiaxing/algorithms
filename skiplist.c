@@ -97,13 +97,14 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
 skip_node_t *skip_list_find(skip_list_t *l, int key){
     skip_node_t *cur = l->header;
     for (int i = l->level-1; i >= 0; i--) {
-        while(cur->level[i] && key >= cur->level[i]->key){
+        while(cur->level[i] && cur->level[i]->key < key){
 //            fprintf(stderr, "level: %d, cur: %d, level[i].key: %d\n", i, cur->key, cur->level[i]->key);
-
             cur = cur->level[i];
         }
-        if(cur->key == key){
-            return cur;
+
+        skip_node_t *next = cur->level[i];
+        if(next != NULL && next->key == key){
+            return next;
         }
     }
     return NULL;
@@ -126,7 +127,6 @@ int skip_list_remove(skip_list_t *l, int key){
     for(int i=l->level-1; i>=0; i--){
         while(cur->level[i] && cur->level[i]->key < key){
 //            fprintf(stdout, "cur.key %d, curl->level[i]: %d\n", cur->key, cur->level[i]->key);
-
             cur = cur->level[i];
         }
         update[i] = cur;
@@ -136,6 +136,8 @@ int skip_list_remove(skip_list_t *l, int key){
     if(cur == NULL || cur->key != key){
         return ENOENT;
     }
+    fprintf(stdout, "in remove: cur.key %d, key: %d\n", cur->key, key);
+
 
     for(int i=l->level-1; i>=0 ; i--){
         skip_node_t *prev = update[i];
@@ -154,6 +156,7 @@ int skip_list_remove(skip_list_t *l, int key){
         l->tail = update[0];
     }
 
+    free(cur);
     l->length--;
 
     while(l->header->level[l->level-1] == NULL){
@@ -171,36 +174,35 @@ int skip_list_remove(skip_list_t *l, int key){
 int main(){
     skip_list_t *sl =  skip_list_create();
 
-    for(int i=0; i<1*M; i++){
-        skip_list_insert(sl, i, i*2);
+    int num_list[10];
+    for(int i=0; i<10; i++){
+        num_list[i] = random() % 10;
+    }
+
+    for(int i=0; i<10; i++){
+        skip_list_insert(sl, num_list[i], num_list[i]*2);
     }
 
     fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
-
-
-    for(int i=2*M; i>30; i--){
-        skip_list_remove(sl, i);
-    }
 
     skip_list_print(sl);
 
     fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
 
-
-//    int ret = skip_list_remove(sl, 12345);
-//    fprintf(stderr, "remove: %d\n", ret);
-//    ret = skip_list_remove(sl, 12345);
-//    fprintf(stderr, "remove: %d\n", ret);
+    int delete_ele[] = {11,22,33,3,3,3,5,-1};
+    for(int i=0; delete_ele[i]!=-1; i++){
+        int ret = skip_list_remove(sl, delete_ele[i]);
+        fprintf(stderr, "remove: %d %s\n", delete_ele[i], ret==0?"success":"failed");
+        fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
+    }
 
     skip_node_t *node;
-    node = skip_list_find(sl, 1*M-1);
+    node = skip_list_find(sl, 6);
     if(node != NULL){
         fprintf(stderr, "found %d\n", node->value);
     }else{
         fprintf(stderr, "not found\n");
     }
-
-    fprintf(stderr, "skiplist length is %lu, done.\n", sl->length);
     return 0;
 }
 
