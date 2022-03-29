@@ -59,7 +59,7 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
 
     skip_node_t *cur = l->header;
     for(int i=l->level-1; i>=0; i--){
-        while(cur->level[i] && cur->level[i]->value < value){
+        while(cur->level[i] && cur->level[i]->key < key){
             cur = cur->level[i];
         }
         update[i] = cur;
@@ -177,7 +177,7 @@ int main(){
     }
 
     for(int i=0; i<20; i++){
-        skip_list_insert(sl, num_list[i], num_list[i]*2);
+        skip_list_insert(sl, num_list[i],  -num_list[i]);
     }
 
     fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
