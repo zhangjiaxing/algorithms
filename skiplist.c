@@ -7,20 +7,20 @@
 #define SKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 
 
-#define skip_list_for_each(node, l) \
+#define skip_list_foreach(node, l) \
         for ((node) = (l)->header->level[0]; (node)!=(l)->header; (node)=(node)->level[0])
 
 
-#define skip_list_for_each_safe(node, l) \
+#define skip_list_foreach_safe(node, l) \
         (node) = (l)->header->level[0]; \
         for (skip_node_t *tMp__=(node)->level[0]; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->level[0])
 
 
-#define skip_list_for_each_reverse(node, l) \
+#define skip_list_foreach_reverse(node, l) \
         for ((node) = (l)->tail; node!=(l)->header; (node)=(node)->backward)
 
 
-#define skip_list_for_each_reverse_safe(node, l) \
+#define skip_list_foreach_reverse_safe(node, l) \
         (node) = (l)->tail; \
         for (skip_node_t *tMp__=(node)->backward; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->backward)
 
@@ -196,6 +196,11 @@ int skip_list_remove(skip_list_t *l, int key){
     return 0;
 }
 
+int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
+    // TODO
+    return 0;
+}
+
 
 #define K 1000
 #define M (1000*1000)
@@ -242,11 +247,10 @@ int main(){
     fprintf(stderr, "\n\n");
 
 
-    //FIXME
     fprintf(stderr, "test skip_list_for_each_reverse_safe\n");
     skip_list_for_each_reverse_safe(node, sl){
         fprintf(stderr, "dekete node: %p, node_next: %p, node key: %d, node_next key %d\n", node, node->level[0], node->key, node->level);
-        skip_list_remove(sl, node->key);
+        skip_list_remove_node(sl, node);
     }
 
     fprintf(stderr, "test skip_list_for_each_safe\n");
