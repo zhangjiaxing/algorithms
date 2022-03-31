@@ -32,14 +32,14 @@ struct skip_node {
     int key;
     int value;
     skip_node_t *backward;
-    skip_node_t *level[];
+    skip_node_t *level[]; //比redis的skiplist,缺少了backword指针, 占用空间小, 但按节点地址删除复杂, 具有多重key的时候(多重字典), 删除性能差.
 };
 
 struct skip_list {
     unsigned long length;
     int level;
-    skip_node_t *header;
-    skip_node_t *tail;
+    skip_node_t *header; //循环列表, 方便逆序遍历
+    skip_node_t *tail; // 和header->backward 完全等价, 只是为了方便.
 };
 
 skip_node_t *skip_node_create(int level, int key, int value){
@@ -197,7 +197,64 @@ int skip_list_remove(skip_list_t *l, int key){
 }
 
 int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
-    // TODO
+    int key = node->key;
+
+    skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
+
+    skip_node_t *cur = l->header;
+    for(int i=l->level-1; i>=0; i--){
+        while(cur->level[i] != l->header && cur->level[i]->key < key){
+            cur = cur->level[i];
+        }
+        update[i] = cur;
+    }
+
+    for(cur=cur->level[0]; cur!=l->header && cur->key == key; cur=cur->level[0]){
+        if(cur == node){
+            //found
+            break;
+        }
+    }
+
+    if(cur == l->header || cur->key != key){
+        return ENOENT;
+    }
+
+    //已经找到节点, cur == node
+    int i;
+    skip_node_t *prev;
+    for(i=l->level-1; i>=0 ; i--){
+        prev = update[i];
+
+        //找到实际的前驱节点
+        while(prev->level[0]->key == key && prev->level[0] != node && prev->level[0] != l->header){
+            prev = prev->level[0];
+        }
+
+        if(prev->level[i] == node){
+            prev->level[i] = node->level[i];
+            // if(i>0){
+            //     update[i-1] = prev; //FIXME: 高level中已经找到的前驱节点, 要么和低level前驱是同一个节点, 要么在低level前驱节点之前. 这样可以优化性能避免低level重复搜索.
+            // }
+        }
+    }
+
+    skip_node_t *next = node->level[0];
+
+    if(next != l->header){
+        next->backward = prev;
+    }else{
+        l->header->backward = prev;
+        l->tail = prev;
+    }
+
+    skip_node_destroy(node);
+    l->length--;
+
+    while(l->header->level[l->level-1] == l->header){
+        l->level--;
+    }
+
     return 0;
 }
 
@@ -241,20 +298,22 @@ int main(){
     skip_list_print(sl);
 
     fprintf(stderr, "==== test reverse\n");
-    skip_list_for_each_reverse(node, sl) {
+    skip_list_foreach_reverse(node, sl) {
         fprintf(stderr, "%d-", node->key);
     }
     fprintf(stderr, "\n\n");
 
 
     fprintf(stderr, "test skip_list_for_each_reverse_safe\n");
-    skip_list_for_each_reverse_safe(node, sl){
-        fprintf(stderr, "dekete node: %p, node_next: %p, node key: %d, node_next key %d\n", node, node->level[0], node->key, node->level);
+    skip_list_foreach_reverse_safe(node, sl){
+        fprintf(stderr, "delete node key: %d,\n", node->key);
         skip_list_remove_node(sl, node);
     }
+    skip_list_print(sl);
+
 
     fprintf(stderr, "test skip_list_for_each_safe\n");
-    skip_list_for_each_safe(node, sl){
+    skip_list_foreach_safe(node, sl){
         fprintf(stderr, "%d-", node->key);
     }
 
