@@ -38,7 +38,7 @@ struct skip_node {
     int key;
     int value;
     skip_node_t *backward;
-    skip_node_t *level[]; //比redis的skiplist,缺少了backword指针, 占用空间小, 但按节点地址删除复杂, 具有多重key的时候(多重字典), 删除性能差.
+    skip_node_t *level[]; //相比level中包含backward指针, 占用空间小, 但按节点地址删除复杂, 具有多重key的时候(多重字典), 删除性能差.
 };
 
 struct skip_list {
