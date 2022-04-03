@@ -227,15 +227,13 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
         prev = update[i];
 
         //找到实际的前驱节点
-        while(prev->level[0]->key == key && prev->level[0] != node && prev->level[0] != l->header){
-            prev = prev->level[0];
+        while(prev->level[i]->key == key && prev->level[i] != node && prev->level[i] != l->header){
+            prev = prev->level[i];
         }
 
         if(prev->level[i] == node){
+            //printf(">>> 更新前驱节点 prev->level[%d](%d).next = node.next(%d)\n", i, prev->key, node->level[i]->key);
             prev->level[i] = node->level[i];
-            // if(i>0){
-            //     update[i-1] = prev; //FIXME: 高level中已经找到的前驱节点, 要么和低level前驱是同一个节点, 要么在低level前驱节点之前. 这样可以优化性能避免低level重复搜索.
-            // }
         }
     }
 
