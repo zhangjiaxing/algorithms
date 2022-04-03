@@ -203,42 +203,43 @@ int skip_list_remove(skip_list_t *l, int key){
 }
 
 int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
+    if(node == l->header){
+        return ENOENT;
+    }
+
     int key = node->key;
 
     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
 
     skip_node_t *cur = l->header;
+
+    //主要考虑有多重key的情况
     for(int i=l->level-1; i>=0; i--){
-        while(cur->level[i] != l->header && cur->level[i]->key < key){
+        // update[i] = cur; //备份cur
+
+        while(cur->level[i] != l->header && cur->level[i]->key <= key && cur->level[i] != node){
             cur = cur->level[i];
         }
-        update[i] = cur;
-    }
-
-    for(cur=cur->level[0]; cur!=l->header && cur->key == key; cur=cur->level[0]){
-        if(cur == node){
-            //found
-            break;
+        
+        //如果在level[i]中找到node,则更新update数组,否则使用备份的cur
+        if(cur->level[i] == node){
+            update[i] = cur;
         }
     }
 
-    if(cur == l->header || cur->key != key){
+    if(cur->level[0] != node){
         return ENOENT;
     }
+    //已经找到节点, cur->level[0] == node
 
-    //已经找到节点, cur == node
+
     int i;
     skip_node_t *prev;
     for(i=l->level-1; i>=0 ; i--){
         prev = update[i];
 
-        //找到实际的前驱节点
-        while(prev->level[i]->key == key && prev->level[i] != node && prev->level[i] != l->header){
-            prev = prev->level[i];
-        }
-
         if(prev->level[i] == node){
-            //printf(">>> 更新前驱节点 prev->level[%d](%d).next = node.next(%d)\n", i, prev->key, node->level[i]->key);
+            // printf(">>> 更新前驱节点 prev->level[%d](%d).next = node.next(%d)\n", i, prev->key, node->level[i]->key);
             prev->level[i] = node->level[i];
         }
     }
