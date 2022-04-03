@@ -1,5 +1,11 @@
+/*
+一个支持多重key的skiplist
+*/
+
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <errno.h>
 
 
@@ -58,7 +64,7 @@ skip_list_t* skip_list_create(){
     slist->level = 1;
     slist->length = 0;
 
-    slist->header = skip_node_create(SKIPLIST_MAXLEVEL, 0, 0);
+    slist->header = skip_node_create(SKIPLIST_MAXLEVEL, INT_MIN, INT_MIN); //方便debug,容易发现是头节点
     slist->header->backward = slist->header;
     for(int i=0; i<SKIPLIST_MAXLEVEL; i++){
         slist->header->level[i] = slist->header; // 使用循环链表, 方便实现 skip_list_for_each_safe
