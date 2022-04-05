@@ -52,6 +52,7 @@ struct skip_list {
 };
 
 skip_node_t *skip_node_create(int level, int key, int value){
+    printf("%s, key=%d value=%d level=%d\n", __func__, key, value, level);
     skip_node_t *node = malloc(sizeof(*node) + level*(sizeof(struct skiplist_level)));
     node->key = key;
     node->value = value;
@@ -69,8 +70,8 @@ skip_list_t* skip_list_create(){
 
     skip_node_t *header = skip_node_create(SKIPLIST_MAXLEVEL, INT_MIN, INT_MIN); //方便debug,容易发现是头节点
     for(int i=0; i<SKIPLIST_MAXLEVEL; i++){
-        header->level[i].backward = slist->header;
-        header->level[i].forward = slist->header; // 使用循环链表, 方便实现 skip_list_for_each_safe
+        header->level[i].backward = header;
+        header->level[i].forward = header; // 使用循环链表, 方便实现 skip_list_for_each_safe
         header->level[i].span = 0;
     }
 
@@ -132,7 +133,7 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         node->level[i].backward = prev;
 
         next->level[i].span = update[i]->level[i].span - (rank[0] - rank[i]);
-        update[0]->level[i].span = (rank[0] - rank[i]) + 1;
+        update[i]->level[i].span = (rank[0] - rank[i]) + 1;
     }
 
     for(int i=insert_level; i<l->level; i++){
@@ -165,14 +166,40 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
 // }
 
 void skip_list_print(skip_list_t *l){
+    printf("list count: %lu\n", l->length);
     for(int i=l->level-1; i>=0; i--){
         printf("level %d: ", i);
         for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
-            printf("%d-", cur->key);
+            printf("%d(v%d)-", cur->key, cur->value);
         }
         printf("NULL\n");
     }
 }
+
+
+void skip_list_span_print(skip_list_t *l){
+    printf("list count: %lu\n", l->length);
+    for(int i=l->level-1; i>=0; i--){
+        printf("level %d(s%lu): ", i,l->header->level[i].span);
+        for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
+            printf("%d(s%lu)-", cur->key, cur->level[i].span);
+        }
+        printf("NULL\n");
+    }
+}
+
+
+void skip_list_reverse_print(skip_list_t *l){
+    printf("list count: %lu\n", l->length);
+    for(int i=l->level-1; i>=0; i--){
+        printf("level %d(s%lu): ", i, l->header->level[i].span);
+        for(skip_node_t *cur=l->header->level[i].backward; cur!=l->header; cur=cur->level[i].backward){
+            printf("%d(s%lu)-", cur->key, cur->level[i].span);
+        }
+        printf("NULL\n");
+    }
+}
+
 
 // int skip_list_remove(skip_list_t *l, int key){
 //     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
@@ -285,18 +312,25 @@ void skip_list_print(skip_list_t *l){
 
 int main(){
     skip_list_t *sl =  skip_list_create();
-
-    int num_list[20];
-    for(int i=0; i<20; i++){
-        num_list[i] = random() % 20;
+    srand(2);
+    for(int i=0; i<10; i++){
+        printf("#insert %d\n", i);
+        skip_list_insert(sl, i,  i*2);
     }
 
-    for(int i=0; i<20; i++){
-        skip_list_insert(sl, num_list[i],  -num_list[i]);
-    }
 
-    // fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
-    // skip_list_print(sl);
+//    int num_list[20];
+//    for(int i=0; i<20; i++){
+//        num_list[i] = random() % 20;
+//    }
+
+//    for(int i=0; i<20; i++){
+//        skip_list_insert(sl, num_list[i],  -num_list[i]);
+//    }
+
+     fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
+     skip_list_span_print(sl);
+//     skip_list_reverse_print(sl);
 
     // int delete_ele[] = {11,22,33,3,3,3,5,7,7,7,19,19,-1};
     // for(int i=0; delete_ele[i]!=-1; i++){
