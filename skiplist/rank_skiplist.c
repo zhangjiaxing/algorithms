@@ -100,6 +100,12 @@ static int random_level(void) {
 skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
     unsigned long rank[SKIPLIST_MAXLEVEL] = {};
+    int insert_level = random_level();
+
+    skip_node_t *node = skip_node_create(insert_level, key, value);
+    if(node == NULL){
+        return NULL;
+    }
 
     skip_node_t *cur = l->header;
     for(int i=l->level-1; i>=0; i--){
@@ -112,17 +118,7 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         update[i] = cur;
     }
 
-    int insert_level = random_level();
-    if(insert_level > l->level){
-        for(int i=l->level; i<insert_level; i++){
-            rank[i] = 0;
-            update[i] = l->header;
-            update[i]->level[i].span = l->length;
-        }
-        l->level = insert_level;
-    }
 
-    skip_node_t *node = skip_node_create(insert_level, key, value);
     for(int i=0; i<insert_level ; i++){
         skip_node_t *next = update[i]->level[i].forward;
         next->level[i].backward = node;
@@ -132,12 +128,16 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         prev->level[i].forward = node;
         node->level[i].backward = prev;
 
-        next->level[i].span = update[i]->level[i].span - (rank[0] - rank[i]);
-        update[i]->level[i].span = (rank[0] - rank[i]) + 1;
+        node->level[i].span = rank[0] - rank[i] + 1;
+        update[i]->level[i].span = rank[0] - rank[i];
     }
 
     for(int i=insert_level; i<l->level; i++){
         update[i]->level[i].span++;
+    }
+
+    if(insert_level > l->level){
+        l->level = insert_level;
     }
 
     if(node->level[0].forward == l->header){
