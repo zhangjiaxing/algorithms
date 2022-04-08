@@ -100,7 +100,11 @@ static int random_level(void) {
 skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
     unsigned long rank[SKIPLIST_MAXLEVEL] = {};
+
     int insert_level = random_level();
+    if(insert_level > l->level){
+        l->level = insert_level;
+    }
 
     skip_node_t *node = skip_node_create(insert_level, key, value);
     if(node == NULL){
@@ -109,17 +113,22 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
 
     skip_node_t *cur = l->header;
     for(int i=l->level-1; i>=0; i--){
-        rank[i] = i == (l->level-1) ? 0 : rank[i+1]; //累加上面一个level的计数
+        rank[i] = i == (l->level-1) ? 0 : rank[i+1]; //累加上面一个level的span
 
         while(cur->level[i].forward != l->header && cur->level[i].forward->key < key){
-            rank[i] += cur->level[i].span;
             cur = cur->level[i].forward;
-        }
+            rank[i] += cur->level[i].span;        }
         update[i] = cur;
     }
 
+    printf("insert key=%d, rank=", key);
+    for(int i=0; i<l->level; i++){
+        printf("%lu ", rank[i]);
+    }
+    printf("\n");
 
     for(int i=0; i<insert_level ; i++){
+
         skip_node_t *next = update[i]->level[i].forward;
         next->level[i].backward = node;
         node->level[i].forward = next;
@@ -128,17 +137,15 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         prev->level[i].forward = node;
         node->level[i].backward = prev;
 
-        node->level[i].span = rank[0] - rank[i] + 1;
         update[i]->level[i].span = rank[0] - rank[i];
+        node->level[i].span = rank[0] - rank[i] + 1;
     }
+
 
     for(int i=insert_level; i<l->level; i++){
         update[i]->level[i].span++;
     }
 
-    if(insert_level > l->level){
-        l->level = insert_level;
-    }
 
     if(node->level[0].forward == l->header){
         l->tail = node;
@@ -330,7 +337,7 @@ int main(){
 
      fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
      skip_list_span_print(sl);
-//     skip_list_reverse_print(sl);
+     skip_list_reverse_print(sl);
 
     // int delete_ele[] = {11,22,33,3,3,3,5,7,7,7,19,19,-1};
     // for(int i=0; delete_ele[i]!=-1; i++){
