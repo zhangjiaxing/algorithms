@@ -102,18 +102,20 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
     unsigned long rank[SKIPLIST_MAXLEVEL] = {};
 
+    int insert_level = random_level();
+    skip_node_t *node = skip_node_create(insert_level, key, value);
+
     skip_node_t *cur = l->header;
     for(int i=l->level-1; i>=0; i--){
         rank[i] = i == (l->level-1) ? 0 : rank[i+1]; //累加上面一个level的span
 
-        while(cur->level[i].forward != l->header && cur->level[i].forward->key < key){
+        while(cur->level[i].forward != l->header && cur->level[i].forward->key <= key && cur->level[i].forward < node){ //最后按照地址比较, 将地址小的放在前面, 相同key元素指针大小有序, 按照指针查找元素会很快
             rank[i] += cur->level[i].span; //需要加上上header中的span, 所以先计算span
             cur = cur->level[i].forward;
         }
         update[i] = cur;
     }
 
-    int insert_level = random_level();
     if(insert_level > l->level){
         for(int i=l->level; i<insert_level; i++){
             rank[i] = 0;
@@ -123,7 +125,6 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         l->level = insert_level;
     }
 
-    skip_node_t *node = skip_node_create(insert_level, key, value);
 
     for(int i=0; i<insert_level ; i++){
         skip_node_t *next = update[i]->level[i].forward;
@@ -179,12 +180,23 @@ void skip_list_print(skip_list_t *l){
 }
 
 
-void skip_list_span_print(skip_list_t *l){
+void skip_list_rank_print(skip_list_t *l){
     printf("list count: %lu\n", l->length);
     for(int i=l->level-1; i>=0; i--){
         printf("level %d(span%lu): ", i,l->header->level[i].span);
         for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
             printf("%d(span%lu)-", cur->key, cur->level[i].span);
+        }
+        printf("NULL\n");
+    }
+}
+
+void skip_list_addr_print(skip_list_t *l){
+    printf("list count: %lu\n", l->length);
+    for(int i=l->level-1; i>=0; i--){
+        printf("level %d(%p): ", i, l->header);
+        for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
+            printf("%d(addr%p)-", cur->key, cur);
         }
         printf("NULL\n");
     }
@@ -324,7 +336,8 @@ int main(){
    }
 
      fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
-     skip_list_span_print(sl);
+     skip_list_rank_print(sl);
+     skip_list_addr_print(sl);
 
     int delete_ele[] = {11,22,33,3,3,3,5,7,7,7,19,19,-1};
     for(int i=0; delete_ele[i]!=-1; i++){
@@ -342,8 +355,8 @@ int main(){
     }
 
     fprintf(stderr, "==== test print\n");
-
-    skip_list_span_print(sl);
+    skip_list_rank_print(sl);
+    skip_list_addr_print(sl);
 
     // fprintf(stderr, "==== test reverse\n");
     // skip_list_foreach_reverse(node, sl) {
