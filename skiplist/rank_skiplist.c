@@ -109,7 +109,8 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
     for(int i=l->level-1; i>=0; i--){
         rank[i] = i == (l->level-1) ? 0 : rank[i+1]; //累加上面一个level的span
 
-        while(cur->level[i].forward != l->header && cur->level[i].forward->key <= key && cur->level[i].forward < node){ //最后按照地址比较, 将地址小的放在前面, 相同key元素指针大小有序, 按照指针查找元素会很快
+        //最后按照地址比较, 将地址小的放在前面, 相同key元素指针大小有序, 按照指针查找元素会很快
+        while(cur->level[i].forward != l->header && (cur->level[i].forward->key < key || (cur->level[i].forward->key == key && cur->level[i].forward < node))){
             rank[i] += cur->level[i].span; //需要加上上header中的span, 所以先计算span
             cur = cur->level[i].forward;
         }
@@ -265,7 +266,7 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
 
     skip_node_t *cur = l->header;
     for(int i=l->level-1; i>=0; i--){
-        while(cur->level[i].forward != l->header && cur->level[i].forward->key <= key && cur->level[i].forward < node){
+        while(cur->level[i].forward != l->header && (cur->level[i].forward->key < key || (cur->level[i].forward->key == key && cur->level[i].forward < node))){
             cur = cur->level[i].forward;
         }
         update[i] = cur;
