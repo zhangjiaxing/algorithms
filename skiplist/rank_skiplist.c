@@ -105,8 +105,8 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         rank[i] = i == (l->level-1) ? 0 : rank[i+1]; //累加上面一个level的span
 
         while(cur->level[i].forward != l->header && cur->level[i].forward->key < key){
-            cur = cur->level[i].forward;
             rank[i] += cur->level[i].span;
+            cur = cur->level[i].forward;
         }
         update[i] = cur;
     }
