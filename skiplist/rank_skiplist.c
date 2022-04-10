@@ -12,22 +12,22 @@
 #define SKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 
 
-// #define skip_list_foreach(node, l) \
-//         for ((node) = (l)->header->level[0]; (node)!=(l)->header; (node)=(node)->level[0])
+#define skip_list_foreach(node, l) \
+        for ((node) = (l)->header->level[0].forward; (node)!=(l)->header; (node)=(node)->level[0].forward)
 
 
-// #define skip_list_foreach_safe(node, l) \
-//         (node) = (l)->header->level[0]; \
-//         for (skip_node_t *tMp__=(node)->level[0]; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->level[0])
+#define skip_list_foreach_safe(node, l) \
+        (node) = (l)->header->level[0].forward; \
+        for (skip_node_t *tMp__=(node)->level[0].forward; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->level[0].forward)
 
 
-// #define skip_list_foreach_reverse(node, l) \
-//         for ((node) = (l)->tail; node!=(l)->header; (node)=(node)->backward)
+#define skip_list_foreach_reverse(node, l) \
+        for ((node) = (l)->header->level[0].backward; node!=(l)->header; (node)=(node)->level[0].backward)
 
 
-// #define skip_list_foreach_reverse_safe(node, l) \
-//         (node) = (l)->tail; \
-//         for (skip_node_t *tMp__=(node)->backward; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->backward)
+#define skip_list_foreach_reverse_safe(node, l) \
+        (node) = (l)->header->level[0].backward; \
+        for (skip_node_t *tMp__=(node)->level[0].backward; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->level[0].backward)
 
 
 typedef struct skip_node skip_node_t;
@@ -39,7 +39,9 @@ struct skip_node {
     struct skiplist_level {
         skip_node_t *backward; //level中包含backward. 对于具有多重key的skiplist, 给定要删除node指针时, 删除性能更好.
         skip_node_t *forward;
-        unsigned long span; //在节点中存放到下一个节点的距离,header节点中存放到第一个节点中的距离, 最后一个节点的span应该为0
+        //span在节点中存放到forward节点的距离,header节点中span存放到第一个节点中的距离, level[0]最后一个节点的span应该为0
+        //这样insert时候, 只需要计算backward节点和当前节点的span, 不需要计算forward节点的span. 这样可以不需要判断forward节点是否是NULL/header.
+        unsigned long span; 
     }level[];
 };
 
@@ -105,7 +107,7 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         rank[i] = i == (l->level-1) ? 0 : rank[i+1]; //累加上面一个level的span
 
         while(cur->level[i].forward != l->header && cur->level[i].forward->key < key){
-            rank[i] += cur->level[i].span;
+            rank[i] += cur->level[i].span; //需要加上上header中的span, 所以先计算span
             cur = cur->level[i].forward;
         }
         update[i] = cur;
@@ -150,21 +152,20 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
     return node;
 }
 
-// skip_node_t *skip_list_find(skip_list_t *l, int key){
-//     skip_node_t *cur = l->header;
-//     for (int i = l->level-1; i >= 0; i--) {
-//         while(cur->level[i] != l->header && cur->level[i]->key < key){
-// //            fprintf(stderr, "level: %d, cur: %d, level[i].key: %d\n", i, cur->key, cur->level[i]->key);
-//             cur = cur->level[i];
-//         }
+skip_node_t *skip_list_find(skip_list_t *l, int key){
+    skip_node_t *cur = l->header;
+    for (int i = l->level-1; i >= 0; i--) {
+        while(cur->level[i].forward != l->header && cur->level[i].forward->key < key){
+            cur = cur->level[i].forward;
+        }
 
-//         skip_node_t *next = cur->level[i];
-//         if(next != l->header && next->key == key){
-//             return next;
-//         }
-//     }
-//     return NULL;
-// }
+        skip_node_t *next = cur->level[i].forward;
+        if(next != l->header && next->key == key){
+            return next;
+        }
+    }
+    return NULL;
+}
 
 void skip_list_print(skip_list_t *l){
     printf("list count: %lu\n", l->length);
@@ -181,7 +182,7 @@ void skip_list_print(skip_list_t *l){
 void skip_list_span_print(skip_list_t *l){
     printf("list count: %lu\n", l->length);
     for(int i=l->level-1; i>=0; i--){
-        printf("level %d(headerSpan %lu): ", i,l->header->level[i].span);
+        printf("level %d(span%lu): ", i,l->header->level[i].span);
         for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
             printf("%d(span%lu)-", cur->key, cur->level[i].span);
         }
@@ -313,21 +314,15 @@ void skip_list_reverse_print(skip_list_t *l){
 
 int main(){
     skip_list_t *sl =  skip_list_create();
-    srand(2);
-    for(int i=0; i<5; i++){
-        printf("#insert %d\n", i);
-        skip_list_insert(sl, i,  i*2);
-    }
 
+   int num_list[20];
+   for(int i=0; i<20; i++){
+       num_list[i] = random() % 20;
+   }
 
-//    int num_list[20];
-//    for(int i=0; i<20; i++){
-//        num_list[i] = random() % 20;
-//    }
-
-//    for(int i=0; i<20; i++){
-//        skip_list_insert(sl, num_list[i],  -num_list[i]);
-//    }
+   for(int i=0; i<20; i++){
+       skip_list_insert(sl, num_list[i],  -num_list[i]);
+   }
 
      fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
      skip_list_span_print(sl);
@@ -339,13 +334,13 @@ int main(){
     // }
     // fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
 
-    // skip_node_t *node;
-    // node = skip_list_find(sl, 6);
-    // if(node != NULL){
-    //     fprintf(stderr, "found key: %d, value is: %d\n", node->key, node->value);
-    // }else{
-    //     fprintf(stderr, "not found\n");
-    // }
+    skip_node_t *node;
+    node = skip_list_find(sl, 6);
+    if(node != NULL){
+        fprintf(stderr, "found key: %d, value is: %d\n", node->key, node->value);
+    }else{
+        fprintf(stderr, "not found\n");
+    }
 
     // fprintf(stderr, "==== test print\n");
 
@@ -361,7 +356,7 @@ int main(){
     // fprintf(stderr, "test skip_list_for_each_reverse_safe\n");
     // skip_list_foreach_reverse_safe(node, sl){
     //     fprintf(stderr, "delete node key: %d,\n", node->key);
-    //     skip_list_remove_node(sl, node);
+    //     // skip_list_remove_node(sl, node);
     // }
     // skip_list_print(sl);
 
