@@ -258,65 +258,57 @@ int skip_list_remove(skip_list_t *l, int key){
     return 0;
 }
 
-// int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
-//     int key = node->key;
+int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
+    int key = node->key;
 
-//     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
+    skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
 
-//     skip_node_t *cur = l->header;
-//     for(int i=l->level-1; i>=0; i--){
-//         while(cur->level[i] != l->header && cur->level[i]->key < key){
-//             cur = cur->level[i];
-//         }
-//         update[i] = cur;
-//     }
+    skip_node_t *cur = l->header;
+    for(int i=l->level-1; i>=0; i--){
+        while(cur->level[i].forward != l->header && cur->level[i].forward->key <= key && cur->level[i].forward < node){
+            cur = cur->level[i].forward;
+        }
+        update[i] = cur;
+    }
 
-//     for(cur=cur->level[0]; cur!=l->header && cur->key == key; cur=cur->level[0]){
-//         if(cur == node){
-//             //found
-//             break;
-//         }
-//     }
+    cur = cur->level[0].forward;
+    if(cur == l->header || cur != node){
+        printf("remove node addr %p not found!!! cur=%p, cur key=%d\n", node, cur, cur->key); //FIXME
 
-//     if(cur == l->header || cur->key != key){
-//         return ENOENT;
-//     }
+        return ENOENT;
+    }
 
-//     //已经找到节点, cur == node
-//     int i;
-//     skip_node_t *prev;
-//     for(i=l->level-1; i>=0 ; i--){
-//         prev = update[i];
+    //已经找到节点, cur == node
+    int i;
+    skip_node_t *prev;
+    for(i=l->level-1; i>=0 ; i--){
+        prev = update[i];
 
-//         //找到实际的前驱节点
-//         while(prev->level[i]->key == key && prev->level[i] != node && prev->level[i] != l->header){
-//             prev = prev->level[i];
-//         }
+        if(prev->level[i].forward == node){
+            prev->level[i].span  += cur->level[i].span - 1;
+            prev->level[i].forward = cur->level[i].forward;
+            cur->level[i].backward = cur->level[i].backward;
+        }else{
+            prev->level[i].span --;
+        }
+    }
 
-//         if(prev->level[i] == node){
-//             //printf(">>> 更新前驱节点 prev->level[%d](%d).next = node.next(%d)\n", i, prev->key, node->level[i]->key);
-//             prev->level[i] = node->level[i];
-//         }
-//     }
+    skip_node_t *next = node->level[0].forward;
 
-//     skip_node_t *next = node->level[0];
+    if(next == l->header){
+        l->tail = update[0];
+    }
 
-//     if(next != l->header){
-//         next->backward = prev;
-//     }else{
-//         l->header->backward = prev;
-//         l->tail = prev;
-//     }
+    printf("remove node addr %p\n", node);
+    skip_node_destroy(node);
+    l->length--;
 
-//     skip_node_destroy(node);
-//     l->length--;
+    while(l->header->level[l->level-1].forward == l->header){
+        l->level--;
+    }
 
-//     while(l->header->level[l->level-1] == l->header){
-//         l->level--;
-//     }
-
-//     return 0;
-// }
+    return 0;
+}
 
 
 #define K 1000
@@ -339,24 +331,25 @@ int main(){
      skip_list_rank_print(sl);
      skip_list_addr_print(sl);
 
-    int delete_ele[] = {11,22,33,3,3,3,5,7,7,7,19,19,-1};
-    for(int i=0; delete_ele[i]!=-1; i++){
-        int ret = skip_list_remove(sl, delete_ele[i]);
-        fprintf(stderr, "remove: %d %s\n", delete_ele[i], ret==0?"success":"failed");
-    }
-    fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
-
     skip_node_t *node;
-    node = skip_list_find(sl, 6);
-    if(node != NULL){
-        fprintf(stderr, "found key: %d, value is: %d\n", node->key, node->value);
-    }else{
-        fprintf(stderr, "not found\n");
-    }
 
-    fprintf(stderr, "==== test print\n");
-    skip_list_rank_print(sl);
-    skip_list_addr_print(sl);
+    // int delete_ele[] = {11,22,33,3,3,3,5,7,7,7,19,19,-1};
+    // for(int i=0; delete_ele[i]!=-1; i++){
+    //     int ret = skip_list_remove(sl, delete_ele[i]);
+    //     fprintf(stderr, "remove: %d %s\n", delete_ele[i], ret==0?"success":"failed");
+    // }
+    // fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
+
+    // node = skip_list_find(sl, 6);
+    // if(node != NULL){
+    //     fprintf(stderr, "found key: %d, value is: %d\n", node->key, node->value);
+    // }else{
+    //     fprintf(stderr, "not found\n");
+    // }
+
+    // fprintf(stderr, "==== test print\n");
+    // skip_list_rank_print(sl);
+    // skip_list_addr_print(sl);
 
     // fprintf(stderr, "==== test reverse\n");
     // skip_list_foreach_reverse(node, sl) {
@@ -365,12 +358,14 @@ int main(){
     // fprintf(stderr, "\n\n");
 
 
-    // fprintf(stderr, "test skip_list_for_each_reverse_safe\n");
-    // skip_list_foreach_reverse_safe(node, sl){
-    //     fprintf(stderr, "delete node key: %d,\n", node->key);
-    //     skip_list_remove_node(sl, node);
-    // }
-    // skip_list_print(sl);
+    fprintf(stderr, "test skip_list_for_each_reverse_safe\n");
+    skip_list_foreach_reverse_safe(node, sl){
+        if(node->key == 6){
+            int ret = skip_list_remove_node(sl, node);
+            fprintf(stderr, "delete node %p key 6 : %s\n", node, ret == 0? "ok": "failed");
+        }
+    }
+    skip_list_rank_print(sl);
 
 
     // fprintf(stderr, "test skip_list_for_each_safe\n");
