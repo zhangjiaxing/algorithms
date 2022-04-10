@@ -34,10 +34,10 @@ typedef struct skip_node skip_node_t;
 typedef struct skip_list skip_list_t;
 
 struct skip_node {
-    int key;
+    int key; //skiplist按照key的大小顺序存放, 当key一样时候, 按照skip_node的内存中地址顺序存放, 这样给定skip_node指针时候, 可以删除很快.
     int value;
     struct skiplist_level {
-        skip_node_t *backward; //level中包含backward. 对于具有多重key的skiplist, 给定要删除node指针时, 删除性能更好.
+        skip_node_t *backward; //没啥用, 以后会删除
         skip_node_t *forward;
         //span在节点中存放到forward节点的距离,header节点中span存放到第一个节点中的距离, level[0]最后一个节点的span应该为0
         //这样insert时候, 只需要计算backward节点和当前节点的span, 不需要计算forward节点的span. 这样可以不需要判断forward节点是否是NULL/header.
@@ -208,13 +208,13 @@ void skip_list_reverse_print(skip_list_t *l){
 
 //     skip_node_t *cur = l->header;
 //     for(int i=l->level-1; i>=0; i--){
-//         while(cur->level[i] != l->header && cur->level[i]->key < key){
-//             cur = cur->level[i];
+//         while(cur->level[i].forward != l->header && cur->level[i].forward->key < key){
+//             cur = cur->level[i].forward;
 //         }
 //         update[i] = cur;
 //     }
 
-//     cur = cur->level[0];
+//     cur = cur->level[0].forward;
 //     if(cur == l->header || cur->key != key){
 //         return ENOENT;
 //     }
@@ -223,24 +223,23 @@ void skip_list_reverse_print(skip_list_t *l){
 //         skip_node_t *prev = update[i];
 // //        fprintf(stderr, "prev->level[%d]: %p == cur: %p; prev->level[i]: %d, %d\n", i, prev->level[i], cur, prev->level[i]->key, cur->key);
 
-//         if(prev->level[i] == cur){
-//             prev->level[i] = cur->level[i];
+//         if(prev->level[i].forward == cur){
+//             prev->level[i].span  += cur->level[i].span - 1;
+//             prev->level[i].forward = cur->level[i].forward;
+//             cur->level[i].backward = cur->level[i].backward;
 //         }
 //     }
 
-//     skip_node_t *next = cur->level[0];
+//     skip_node_t *next = cur->level[0].forward;
 
-//     if(next != l->header){
-//         next->backward = update[0];
-//     }else{
-//         l->header->backward = update[0];
+//     if(next == l->header){
 //         l->tail = update[0];
 //     }
 
 //     skip_node_destroy(cur);
 //     l->length--;
 
-//     while(l->header->level[l->level-1] == l->header){
+//     while(l->header->level[l->level-1].forward == l->header){
 //         l->level--;
 //     }
 
@@ -342,9 +341,9 @@ int main(){
         fprintf(stderr, "not found\n");
     }
 
-    // fprintf(stderr, "==== test print\n");
+    fprintf(stderr, "==== test print\n");
 
-    // skip_list_print(sl);
+    skip_list_span_print(sl);
 
     // fprintf(stderr, "==== test reverse\n");
     // skip_list_foreach_reverse(node, sl) {
@@ -356,7 +355,7 @@ int main(){
     // fprintf(stderr, "test skip_list_for_each_reverse_safe\n");
     // skip_list_foreach_reverse_safe(node, sl){
     //     fprintf(stderr, "delete node key: %d,\n", node->key);
-    //     // skip_list_remove_node(sl, node);
+    //     skip_list_remove_node(sl, node);
     // }
     // skip_list_print(sl);
 
