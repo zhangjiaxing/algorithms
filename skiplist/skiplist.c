@@ -215,7 +215,7 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
 
     //主要考虑有多重key的情况
     for(int i=l->level-1; i>=0; i--){
-        // update[i] = cur; //备份cur
+        update[i] = cur; //备份cur
 
         while(cur->level[i] != l->header && cur->level[i]->key <= key && cur->level[i] != node){
             cur = cur->level[i];
