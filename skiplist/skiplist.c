@@ -23,11 +23,11 @@
 
 
 #define skip_list_foreach_reverse(node, l) \
-        for ((node) = (l)->tail; node!=(l)->header; (node)=(node)->backward)
+        for ((node) = (l)->header->backward; node!=(l)->header; (node)=(node)->backward)
 
 
 #define skip_list_foreach_reverse_safe(node, l) \
-        (node) = (l)->tail; \
+        (node) = (l)->header->backward; \
         for (skip_node_t *tMp__=(node)->backward; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->backward)
 
 
@@ -35,10 +35,10 @@ typedef struct skip_node skip_node_t;
 typedef struct skip_list skip_list_t;
 
 struct skip_node {
-    int key;
+    int key; //skiplist按照key的大小顺序存放, 当key一样时候, 按照skip_node的内存中地址顺序存放, 这样给定skip_node指针时候, 可以删除很快.
     int value;
     skip_node_t *backward;
-    skip_node_t *level[]; //相比level中包含backward指针, 占用空间小, 但按节点地址删除复杂, 具有多重key的时候(多重字典), 删除性能差.
+    skip_node_t *level[]; //相比level中包含backward指针, 占用空间小.
 };
 
 struct skip_list {
@@ -64,13 +64,14 @@ skip_list_t* skip_list_create(){
     slist->level = 1;
     slist->length = 0;
 
-    slist->header = skip_node_create(SKIPLIST_MAXLEVEL, INT_MIN, INT_MIN); //方便debug,容易发现是头节点
-    slist->header->backward = slist->header;
+    skip_node_t *header = skip_node_create(SKIPLIST_MAXLEVEL, INT_MIN, INT_MIN); //方便debug,容易发现是头节点
+    header->backward = header;
     for(int i=0; i<SKIPLIST_MAXLEVEL; i++){
-        slist->header->level[i] = slist->header; // 使用循环链表, 方便实现 skip_list_for_each_safe
+        header->level[i] = header; // 使用循环链表, 方便实现 skip_list_for_each_safe
     }
 
-    slist->tail = slist->header;  //方便倒序遍历
+    slist->header = header;
+    slist->tail = header;  //可以不要, 等价于header->level[0].backward, 只是为了方便
     return slist;
 }
 
@@ -94,15 +95,18 @@ static int random_level(void) {
 skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
 
+    int insert_level = random_level();
+    skip_node_t *node = skip_node_create(insert_level, key, value);
+
     skip_node_t *cur = l->header;
     for(int i=l->level-1; i>=0; i--){
-        while(cur->level[i] != l->header && cur->level[i]->key < key){
+        //最后按照地址比较, 将地址小的放在前面, 相同key元素指针大小有序, 按照指针查找元素会很快
+        while(cur->level[i] != l->header && (cur->level[i]->key < key || (cur->level[i]->key == key && cur->level[i] < node))){
             cur = cur->level[i];
         }
         update[i] = cur;
     }
 
-    int insert_level = random_level();
     if(insert_level > l->level){
         for(int i=l->level; i<insert_level; i++){
             update[i] = l->header;
@@ -110,10 +114,8 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
         l->level = insert_level;
     }
 
-    skip_node_t *node = skip_node_create(insert_level, key, value);
     for(int i=0; i<insert_level ; i++){
-        skip_node_t *next = update[i]->level[i];
-        node->level[i] = next;
+        node->level[i] = update[i]->level[i];
 
         skip_node_t *prev = update[i];
         prev->level[i] = node;
@@ -135,7 +137,6 @@ skip_node_t *skip_list_find(skip_list_t *l, int key){
     skip_node_t *cur = l->header;
     for (int i = l->level-1; i >= 0; i--) {
         while(cur->level[i] != l->header && cur->level[i]->key < key){
-//            fprintf(stderr, "level: %d, cur: %d, level[i].key: %d\n", i, cur->key, cur->level[i]->key);
             cur = cur->level[i];
         }
 
@@ -148,10 +149,22 @@ skip_node_t *skip_list_find(skip_list_t *l, int key){
 }
 
 void skip_list_print(skip_list_t *l){
+    printf("list count: %lu, level is %d.\n", l->length, l->level);
     for(int i=l->level-1; i>=0; i--){
         printf("level %d: ", i);
         for(skip_node_t *cur=l->header->level[i]; cur!=l->header; cur=cur->level[i]){
-            printf("%d-", cur->key);
+            printf("%d(v%d)-", cur->key, cur->value);
+        }
+        printf("NULL\n");
+    }
+}
+
+void skip_list_addr_print(skip_list_t *l){
+    printf("list count: %lu, level is %d.\n", l->length, l->level);
+    for(int i=l->level-1; i>=0; i--){
+        printf("level %d(%p): ", i, l->header);
+        for(skip_node_t *cur=l->header->level[i]; cur!=l->header; cur=cur->level[i]){
+            printf("%d(addr%p)-", cur->key, cur);
         }
         printf("NULL\n");
     }
@@ -175,8 +188,6 @@ int skip_list_remove(skip_list_t *l, int key){
 
     for(int i=l->level-1; i>=0 ; i--){
         skip_node_t *prev = update[i];
-//        fprintf(stderr, "prev->level[%d]: %p == cur: %p; prev->level[i]: %d, %d\n", i, prev->level[i], cur, prev->level[i]->key, cur->key);
-
         if(prev->level[i] == cur){
             prev->level[i] = cur->level[i];
         }
@@ -212,40 +223,33 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
 
     //主要考虑有多重key的情况
     for(int i=l->level-1; i>=0; i--){
-        update[i] = cur; //备份cur
-
-        while(cur->level[i] != l->header && cur->level[i]->key <= key && cur->level[i] != node){
+        while(cur->level[i] != l->header && (cur->level[i]->key < key || (cur->level[i]->key == key && cur->level[i] < node))){
             cur = cur->level[i];
         }
-        
-        //如果在level[i]中找到node,则更新update数组,否则使用备份的cur
-        if(cur->level[i] == node){
-            update[i] = cur;
-        }
+        update[i] = cur;
     }
 
-    if(cur->level[0] != node){
+    cur = cur->level[0];
+    if(cur == l->header || cur != node){
         return ENOENT;
     }
-    //已经找到节点, cur->level[0] == node
 
-
+    //已经找到节点, cur == node
     int i;
     skip_node_t *prev;
     for(i=l->level-1; i>=0 ; i--){
         prev = update[i];
 
         if(prev->level[i] == node){
-            // printf(">>> 更新前驱节点 prev->level[%d](%d).next = node.next(%d)\n", i, prev->key, node->level[i]->key);
-            prev->level[i] = node->level[i];
+            prev->level[i] = cur->level[i];
         }
     }
 
     skip_node_t *next = node->level[0];
-    next->backward = prev;
+    next->backward = update[0];
 
     if(next == l->header){
-        l->tail = prev;
+        l->tail = update[0];
     }
 
     skip_node_destroy(node);
