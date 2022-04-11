@@ -1,9 +1,13 @@
-all : skiplist ranklist
-.PHONY : all
+all: skiplist ranklist
+.PHONY: all
 
-skiplist : skiplist.c
+skiplist: skiplist.c
 	$(CC) $^ -o $@
 
-ranklist : rank_skiplist.c
+ranklist: rank_skiplist.c
 	$(CC) $^ -o $@ 
 
+clean:
+	rm -rf skiplist ranklist
+
+.PHONY: clean
