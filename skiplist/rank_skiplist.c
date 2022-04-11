@@ -344,6 +344,25 @@ unsigned long skip_list_get_node_rank(skip_list_t *l, skip_node_t *node){
     }
 }
 
+
+skip_node_t *skip_list_get_by_rank(skip_list_t *l, unsigned long rank){
+    unsigned long traversed = 0;
+    skip_node_t *cur = l->header;
+
+    for (int i = l->level-1; i >= 0; i--) {
+        while (cur->level[i].forward && (traversed + cur->level[i].span) <= rank)
+        {
+            traversed += cur->level[i].span;
+            cur = cur->level[i].forward;
+        }
+        if (traversed == rank) {
+            return cur;
+        }
+    }
+    return NULL;
+}
+
+
 #define K 1000
 #define M (1000*1000)
 
@@ -399,9 +418,11 @@ int main(){
     }
     skip_list_rank_print(sl);
 
-    printf("skip_list_get_rank(7) == %d \n", skip_list_get_rank(sl, 7));
+    printf("skip_list_get_rank(17) == %d \n", skip_list_get_rank(sl, 17));
 
-    printf("skip_list_get_node_rank(7) == %d \n", skip_list_get_node_rank(sl, skip_list_find(sl, 7)));
+    printf("skip_list_get_node_rank(17) == %d \n", skip_list_get_node_rank(sl, skip_list_find(sl, 17)));
+
+    printf("skip_list_get_by_rank(15).value == %d \n", skip_list_get_by_rank(sl, 15)->value);
 
 
     // fprintf(stderr, "test skip_list_for_each_safe\n");
