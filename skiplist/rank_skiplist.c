@@ -169,7 +169,7 @@ skip_node_t *skip_list_find(skip_list_t *l, int key){
 }
 
 void skip_list_print(skip_list_t *l){
-    printf("list count: %lu\n", l->length);
+    printf("list count: %lu, level is %d.\n", l->length, l->level);
     for(int i=l->level-1; i>=0; i--){
         printf("level %d: ", i);
         for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
@@ -181,7 +181,7 @@ void skip_list_print(skip_list_t *l){
 
 
 void skip_list_rank_print(skip_list_t *l){
-    printf("list count: %lu\n", l->length);
+    printf("list count: %lu, level is %d.\n", l->length, l->level);
     for(int i=l->level-1; i>=0; i--){
         printf("level %d(span%lu): ", i,l->header->level[i].span);
         for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
@@ -192,7 +192,7 @@ void skip_list_rank_print(skip_list_t *l){
 }
 
 void skip_list_addr_print(skip_list_t *l){
-    printf("list count: %lu\n", l->length);
+    printf("list count: %lu, level is %d.\n", l->length, l->level);
     for(int i=l->level-1; i>=0; i--){
         printf("level %d(%p): ", i, l->header);
         for(skip_node_t *cur=l->header->level[i].forward; cur!=l->header; cur=cur->level[i].forward){
@@ -260,8 +260,6 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
 
     cur = cur->level[0].forward;
     if(cur == l->header || cur != node){
-        printf("remove node addr %p not found!!! cur=%p, cur key=%d\n", node, cur, cur->key); //FIXME
-
         return ENOENT;
     }
 
@@ -286,7 +284,6 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
         l->tail = update[0];
     }
 
-    printf("remove node addr %p\n", node);
     skip_node_destroy(node);
     l->length--;
 
@@ -305,18 +302,17 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
 int main(){
     skip_list_t *sl =  skip_list_create();
 
-   int num_list[20];
-   for(int i=0; i<20; i++){
-       num_list[i] = random() % 20;
-   }
+    int num_list[20];
+    for(int i=0; i<20; i++){
+        num_list[i] = random() % 20;
+    }
 
-   for(int i=0; i<20; i++){
-       skip_list_insert(sl, num_list[i],  -num_list[i]);
-   }
+    for(int i=0; i<20; i++){
+        skip_list_insert(sl, num_list[i],  -num_list[i]);
+    }
 
-     fprintf(stderr, "skiplist count is %lu, level is %d.\n", sl->length, sl->level);
-     skip_list_rank_print(sl);
-     skip_list_addr_print(sl);
+    skip_list_rank_print(sl);
+    skip_list_addr_print(sl);
 
     skip_node_t *node;
 
