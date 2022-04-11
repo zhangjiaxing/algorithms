@@ -238,7 +238,7 @@ int skip_list_remove(skip_list_t *l, int key){
     skip_node_destroy(cur);
     l->length--;
 
-    while(l->header->level[l->level-1].forward == l->header){
+    while(l->level>1 && l->header->level[l->level-1].forward == l->header){
         l->level--;
     }
 
@@ -287,7 +287,7 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
     skip_node_destroy(node);
     l->length--;
 
-    while(l->header->level[l->level-1].forward == l->header){
+    while(l->level>1 && l->header->level[l->level-1].forward == l->header){
         l->level--;
     }
 
