@@ -211,9 +211,9 @@ int skip_list_remove(skip_list_t *l, int key){
 }
 
 int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
-    if(node == l->header){
-        return ENOENT;
-    }
+    // if(node == NULL || node == l->header){
+    //     return ENOENT;
+    // }
 
     int key = node->key;
 

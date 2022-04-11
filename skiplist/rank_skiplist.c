@@ -246,6 +246,10 @@ int skip_list_remove(skip_list_t *l, int key){
 }
 
 int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
+    // if(node == NULL || node == l->header){
+    //     return ENOENT;
+    // }
+
     int key = node->key;
 
     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
@@ -294,6 +298,51 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
     return 0;
 }
 
+
+unsigned long skip_list_get_rank(skip_list_t *l, int key){
+    unsigned long rank = 0;
+    skip_node_t *cur = l->header;
+    
+    for (int i = l->level-1; i >= 0; i--) {
+        while(cur->level[i].forward != l->header && cur->level[i].forward->key < key){
+            rank += cur->level[i].span;
+            cur = cur->level[i].forward;
+        }
+    }
+    
+    rank += cur->level[0].span; // rank += 1
+    cur = cur->level[0].forward;
+
+    if(cur != l->header && cur->key == key){
+        return rank;
+    }else{
+        return 0;
+    }
+}
+
+
+unsigned long skip_list_get_node_rank(skip_list_t *l, skip_node_t *node){
+    // if(node == NULL || node == l->header){
+    //     return ENOENT;
+    // }
+
+    unsigned long rank = 0;
+    int key = node->key;
+    skip_node_t *cur = l->header;
+    
+    for (int i = l->level-1; i >= 0; i--) {
+        while(cur->level[i].forward != l->header && (cur->level[i].forward->key < key ||( cur->level[i].forward->key == key && cur->level[i].forward <= node ))){
+            rank += cur->level[i].span;
+            cur = cur->level[i].forward;
+        }
+    }
+
+    if(cur != l->header && cur->key == key){
+        return rank;
+    }else{
+        return 0;
+    }
+}
 
 #define K 1000
 #define M (1000*1000)
@@ -349,6 +398,10 @@ int main(){
         }
     }
     skip_list_rank_print(sl);
+
+    printf("skip_list_get_rank(7) == %d \n", skip_list_get_rank(sl, 7));
+
+    printf("skip_list_get_node_rank(7) == %d \n", skip_list_get_node_rank(sl, skip_list_find(sl, 7)));
 
 
     // fprintf(stderr, "test skip_list_for_each_safe\n");
