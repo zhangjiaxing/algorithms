@@ -22,12 +22,12 @@
 
 
 #define skip_list_foreach_reverse(node, l) \
-        for ((node) = (l)->header->level[0].backward; node!=(l)->header; (node)=(node)->level[0].backward)
+        for ((node) = (l)->header->backward; node!=(l)->header; (node)=(node)->backward)
 
 
 #define skip_list_foreach_reverse_safe(node, l) \
-        (node) = (l)->header->level[0].backward; \
-        for (skip_node_t *tMp__=(node)->level[0].backward; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->level[0].backward)
+        (node) = (l)->header->backward; \
+        for (skip_node_t *tMp__=(node)->backward; (node)!=(l)->header; (node)=tMp__, tMp__=(node)->backward)
 
 
 typedef struct skip_node skip_node_t;
@@ -36,8 +36,8 @@ typedef struct skip_list skip_list_t;
 struct skip_node {
     int key; //skiplist按照key的大小顺序存放, 当key一样时候, 按照skip_node的内存中地址顺序存放, 这样给定skip_node指针时候, 可以删除很快.
     int value;
+    skip_node_t *backward;
     struct skiplist_level {
-        skip_node_t *backward; //没啥用, 以后会删除
         skip_node_t *forward;
         //span在节点中存放到forward节点的距离,header节点中span存放到第一个节点中的距离, level[0]最后一个节点的span应该为0
         //这样insert时候, 只需要计算backward节点和当前节点的span, 不需要计算forward节点的span. 这样可以不需要判断forward节点是否是NULL/header.
@@ -70,8 +70,8 @@ skip_list_t* skip_list_create(){
     slist->length = 0;
 
     skip_node_t *header = skip_node_create(SKIPLIST_MAXLEVEL, INT_MIN, INT_MIN); //方便debug,容易发现是头节点
+    header->backward = header;
     for(int i=0; i<SKIPLIST_MAXLEVEL; i++){
-        header->level[i].backward = header;
         header->level[i].forward = header; // 使用循环链表, 方便实现 skip_list_for_each_safe
         header->level[i].span = 0;
     }
@@ -128,18 +128,17 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
 
 
     for(int i=0; i<insert_level ; i++){
-        skip_node_t *next = update[i]->level[i].forward;
-        next->level[i].backward = node;
-        node->level[i].forward = next;
+        node->level[i].forward = update[i]->level[i].forward;
 
         skip_node_t *prev = update[i];
         prev->level[i].forward = node;
-        node->level[i].backward = prev;
 
         node->level[i].span = prev->level[i].span - (rank[0] - rank[i]);
         prev->level[i].span = (rank[0] - rank[i])+1;
-
     }
+
+    node->backward = update[0];
+    node->level[0].forward->backward = node;
 
     for(int i=insert_level; i < l->level; i++){
         update[i]->level[i].span++;
@@ -203,19 +202,6 @@ void skip_list_addr_print(skip_list_t *l){
     }
 }
 
-
-void skip_list_reverse_print(skip_list_t *l){
-    printf("list count: %lu\n", l->length);
-    for(int i=l->level-1; i>=0; i--){
-        printf("level %d(s%lu): ", i, l->header->level[i].span);
-        for(skip_node_t *cur=l->header->level[i].backward; cur!=l->header; cur=cur->level[i].backward){
-            printf("%d(s%lu)-", cur->key, cur->level[i].span);
-        }
-        printf("NULL\n");
-    }
-}
-
-
 int skip_list_remove(skip_list_t *l, int key){
     skip_node_t *update[SKIPLIST_MAXLEVEL] = {};
 
@@ -237,13 +223,13 @@ int skip_list_remove(skip_list_t *l, int key){
         if(prev->level[i].forward == cur){
             prev->level[i].span  += cur->level[i].span - 1;
             prev->level[i].forward = cur->level[i].forward;
-            cur->level[i].backward = cur->level[i].backward;
         }else{
             prev->level[i].span --;
         }
     }
 
     skip_node_t *next = cur->level[0].forward;
+    next->backward = update[0];
 
     if(next == l->header){
         l->tail = update[0];
@@ -288,13 +274,13 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
         if(prev->level[i].forward == node){
             prev->level[i].span  += cur->level[i].span - 1;
             prev->level[i].forward = cur->level[i].forward;
-            cur->level[i].backward = cur->level[i].backward;
         }else{
             prev->level[i].span --;
         }
     }
 
     skip_node_t *next = node->level[0].forward;
+    next->backward = update[0];
 
     if(next == l->header){
         l->tail = update[0];
