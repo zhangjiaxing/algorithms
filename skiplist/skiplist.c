@@ -120,10 +120,9 @@ skip_node_t *skip_list_insert(skip_list_t *l, int key, int value){
     }
 
     node->backward = update[0];
-    if(node->level[0] != l->header){
-        node->level[0]->backward = node;
-    }else{
-        l->header->backward = node;
+    node->level[0]->backward = node;
+
+    if(node->level[0] == l->header){
         l->tail = node;
     }
 
@@ -184,11 +183,9 @@ int skip_list_remove(skip_list_t *l, int key){
     }
 
     skip_node_t *next = cur->level[0];
+    next->backward = update[0];
 
-    if(next != l->header){
-        next->backward = update[0];
-    }else{
-        l->header->backward = update[0];
+    if(next == l->header){
         l->tail = update[0];
     }
 
@@ -245,11 +242,9 @@ int skip_list_remove_node(skip_list_t *l, skip_node_t *node){
     }
 
     skip_node_t *next = node->level[0];
+    next->backward = prev;
 
-    if(next != l->header){
-        next->backward = prev;
-    }else{
-        l->header->backward = prev;
+    if(next == l->header){
         l->tail = prev;
     }
 
