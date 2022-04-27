@@ -322,9 +322,9 @@ unsigned long skip_list_get_rank(skip_list_t *l, int key){
 
 
 unsigned long skip_list_get_node_rank(skip_list_t *l, skip_node_t *node){
-    // if(node == NULL || node == l->header){
-    //     return ENOENT;
-    // }
+    if(node == NULL || node == l->header){
+        return ENOENT;
+    }
 
     unsigned long rank = 0;
     int key = node->key;
@@ -337,7 +337,8 @@ unsigned long skip_list_get_node_rank(skip_list_t *l, skip_node_t *node){
         }
     }
 
-    if(cur != l->header && cur->key == key){
+    //if(cur != l->header && cur->key == key)
+    if(cur == node){
         return rank;
     }else{
         return 0;
